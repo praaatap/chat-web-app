@@ -18,6 +18,7 @@ import { GroupCreateModal } from "../components/chat/GroupCreateModal";
 import { SettingsModal } from "../components/chat/SettingsModal";
 
 import { useUIStore } from "../store/useUIStore";
+import { useChatStore } from "../store/useChatStore";
 import { formatMessageTimestamp } from "../lib/utils";
 
 export default function ChatPage() {
@@ -35,11 +36,8 @@ export default function ChatPage() {
 
 function ChatContent() {
   const { user } = useUser();
-  const [searchValue, setSearchValue] = useState("");
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [isLargeScreen, setIsLargeScreen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
-  const [isExtraLargeScreen, setIsExtraLargeScreen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1280 : false);
-
+  
+  // UI Store
   const {
     sidebarWidth,
     setSidebarWidth,
@@ -50,19 +48,44 @@ function ChatContent() {
     theme,
     setTheme
   } = useUIStore();
+  
+  // Chat Store - Central state management
+  const {
+    selectedConversationId,
+    setSelectedConversationId,
+    searchValue,
+    setSearchValue,
+    isSending,
+    setIsSending,
+    error,
+    setError,
+    isGroupModalOpen,
+    setIsGroupModalOpen,
+    isAddMembersOpen,
+    setIsAddMembersOpen,
+    groupName,
+    setGroupName,
+    selectedParticipants,
+    setSelectedParticipants,
+    isLargeScreen,
+    isExtraLargeScreen,
+    handleResize,
+    clearSearch,
+    resetGroupCreation
+  } = useChatStore();
+  
   const isResizing = useRef(false);
 
 
   // Track window resize for responsive layout updates
   useEffect(() => {
-    const handleResize = () => {
-      setIsLargeScreen(window.innerWidth >= 1024);
-      setIsExtraLargeScreen(window.innerWidth >= 1280);
+    const handleWindowResize = () => {
+      handleResize(window.innerWidth);
     };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    window.addEventListener("resize", handleWindowResize);
+    return () => window.removeEventListener("resize", handleWindowResize);
+  }, [handleResize]);
 
   // Apply scaling
   useEffect(() => {
@@ -169,21 +192,14 @@ function ChatContent() {
 
   const handleSelectChat = (id: string) => {
     setSelectedConversationId(id);
-    setSearchValue("");
+    clearSearch();
   };
 
   const handleSelectUser = async (userId: string) => {
     const id = await getOrCreateConversation({ otherUserId: userId as any });
     setSelectedConversationId(id);
-    setSearchValue("");
+    clearSearch();
   };
-
-  const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
-  const [isAddMembersOpen, setIsAddMembersOpen] = useState(false);
-  const [groupName, setGroupName] = useState("");
-  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
 
   const handleSendMessage = async (body: string, replyTo?: string, replyToUser?: string) => {
     if (!selectedConversationId || !body.trim() || isSending) return;
@@ -202,9 +218,7 @@ function ChatContent() {
     if (!groupName.trim() || selectedParticipants.length === 0) return;
     const id = await createGroup({ participantIds: selectedParticipants as any, name: groupName });
     setSelectedConversationId(id);
-    setIsGroupModalOpen(false);
-    setGroupName("");
-    setSelectedParticipants([]);
+    resetGroupCreation();
   };
 
   const handleSendGroupInvites = async (userIds: string[], message?: string) => {
