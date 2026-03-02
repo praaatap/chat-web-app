@@ -15,24 +15,29 @@ export function MainHeader() {
     const [isNotificationsPanelOpen, setIsNotificationsPanelOpen] = useState(false);
 
     return (
-        <header className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 px-5 py-3 shrink-0 z-50">
-            <div className="flex items-center gap-6">
+        <header className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 px-5 py-3 shrink-0 z-50">
+            <div className="flex items-center gap-6 justify-self-start min-w-0">
                 <Link href="/" className="flex items-center gap-2 text-lg font-bold text-indigo-600 dark:text-indigo-400">
                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 dark:bg-indigo-600 text-white text-sm">
                         💬
                     </span>
                     Tars Connect
                 </Link>
-                <Authenticated>
-                    <nav className="hidden sm:flex items-center gap-4">
-                        <Link href="/chat" className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                            Chat
-                        </Link>
-
-                    </nav>
-                </Authenticated>
             </div>
-            <div className="flex items-center gap-3">
+
+            <nav className="hidden sm:flex items-center justify-center gap-6 justify-self-center">
+                <Link href="/chat" className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    Chat
+                </Link>
+                <Link href="/privacy-policy" className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    Privacy Policy
+                </Link>
+                <Link href="/code-of-conduct" className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    Code of Conduct
+                </Link>
+            </nav>
+
+            <div className="flex items-center gap-3 justify-self-end">
                 <Authenticated>
                     {/* Notifications Button */}
                     <button
