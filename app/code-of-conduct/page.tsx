@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { MainHeader } from "../components/MainHeader";
 
 export default function CodeOfConductPage() {
   return (
-    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950">
-      <MainHeader />
-      <main className="px-6 py-10">
+    <main className="min-h-full bg-zinc-100 dark:bg-zinc-950 px-6 py-10">
         <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl shadow-indigo-100/40 dark:shadow-indigo-950/20">
           <div className="bg-indigo-600 px-8 py-10 text-white">
             <h1 className="text-3xl md:text-4xl font-black tracking-tight">Code of Conduct</h1>
@@ -79,6 +76,5 @@ export default function CodeOfConductPage() {
           </div>
         </div>
       </main>
-    </div>
   );
 }

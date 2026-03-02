@@ -5,8 +5,6 @@ import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { Authenticated, AuthLoading } from "convex/react";
 import { api } from "../../convex/_generated/api";
-
-import { MainHeader } from "../components/MainHeader";
 import { ChatSidebar } from "../components/chat/ChatSidebar";
 import { ChatRightSidebar } from "../components/chat/ChatRightSidebar";
 import { ChatWindow } from "../components/chat/ChatWindow";
@@ -292,9 +290,7 @@ function ChatContent() {
   const displayItems = searchValue.trim() !== "" ? searchItems : chatItems;
 
   return (
-    <main className="flex h-screen flex-col bg-zinc-100 dark:bg-zinc-950 relative">
-      <MainHeader />
-
+    <main className="flex h-full flex-col bg-zinc-100 dark:bg-zinc-950 relative">
       <div className="flex min-h-0 flex-1 relative overflow-hidden">
         <div
           className={`lg:flex shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 group/sidebar relative ${selectedConversationId ? 'hidden' : 'flex w-full'}`}

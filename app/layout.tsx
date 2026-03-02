@@ -28,18 +28,21 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({
+  appbar,
   children,
 }: Readonly<{
+  appbar: React.ReactNode;
   children: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 min-h-screen flex flex-col`}
       >
         <ThemeProvider>
           <ConvexClientProvider>
-            {children}
+            {appbar}
+            <div className="flex-1 min-h-0">{children}</div>
           </ConvexClientProvider>
         </ThemeProvider>
       </body>
