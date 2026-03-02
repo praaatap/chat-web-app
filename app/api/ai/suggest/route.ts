@@ -1,12 +1,15 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { PromptTemplate } from "@langchain/core/prompts";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { RunnableSequence } from "@langchain/core/runnables";
 import { NextResponse } from "next/server";
 import process from "process";
 
 export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
     try {
-        const { context, userName , tone} = await req.json();
+        const { context, userName, tone } = await req.json();
 
         if (!context || context.trim() === "") {
             console.log("Empty context provided to AI suggestion API");
@@ -18,64 +21,124 @@ export async function POST(req: Request) {
             return NextResponse.json({ suggestions: [] });
         }
 
+        // Initialize the model with better parameters
         const model = new ChatGoogleGenerativeAI({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.0-flash-exp",
             apiKey: process.env.GOOGLE_API_KEY,
-            maxOutputTokens: 200,
-            temperature: 0.7,
+            maxOutputTokens: 300,
+            temperature: 0.8,
+            topP: 0.9,
+            topK: 40,
         });
 
+        // Enhanced prompt template with better instructions
         const promptTemplate = PromptTemplate.fromTemplate(
-            `You are an AI assistant helping a user write helpful replies in a chat.
+            `You are an intelligent AI assistant helping {userName} compose contextually appropriate chat replies.
 
-Conversation History:
+Your task: Analyze the conversation and generate 3 distinct, natural reply suggestions.
+
+Conversation Context:
+---
 {context}
-you are a user named {userName} in the conversation above. Based on the conversation history, generate 3 short and relevant reply suggestions that {userName} can use to continue the conversation. Each suggestion should be concise (max 40 words) and contextually appropriate. Avoid generic responses and try to capture the tone of the conversation.
-SYSTEM : Generate 3 short reply suggestions (max 40 words each) in {tone}.
-Format: suggestion1 | suggestion2 | suggestion3
-IMPORTANT: Only output the suggestions separated by |. Nothing else.`
+---
+
+Guidelines:
+1. Match the {tone} tone: 
+   - Friendly: Warm, casual, use emojis occasionally
+   - Professional: Formal, clear, business-appropriate
+   - Funny: Humorous, witty, playful
+   - Sarcastic: Dry humor, ironic, subtle wit
+
+2. Each suggestion should:
+   - Be conversationally natural (15-40 words)
+   - Directly respond to the last message
+   - Show understanding of context
+   - Be distinct from other suggestions
+   - Sound like {userName} would say it
+
+3. Vary the suggestions:
+   - One direct/simple response
+   - One elaborate/detailed response  
+   - One creative/engaging response
+
+Output Format: Return ONLY the 3 suggestions separated by " | " (pipe with spaces)
+Example: "That sounds great! 😊 | Could you tell me more about that? | I'm intrigued, let's discuss this further!"
+
+Generate suggestions now:`
         );
 
-        const chain = promptTemplate.pipe(model);
+        // Create a parsing function for more robust output handling
+        const parseOutput = (text: string): string[] => {
+            // Clean the text
+            let cleanText = text.trim();
+            
+            // Remove any markdown formatting
+            cleanText = cleanText.replace(/```[\s\S]*?```/g, '');
+            cleanText = cleanText.replace(/`/g, '');
+            
+            // Remove common prefixes
+            cleanText = cleanText.replace(/^(Suggestions?:|Replies?:|Output:)\s*/i, '');
+            
+            let suggestions: string[] = [];
+            
+            // Try splitting by |
+            if (cleanText.includes('|')) {
+                suggestions = cleanText
+                    .split('|')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 5 && s.length < 150)
+                    .slice(0, 3);
+            }
+            // Try splitting by newlines with numbers
+            else if (/^\d+[\.\)]\s/.test(cleanText)) {
+                suggestions = cleanText
+                    .split(/\n+/)
+                    .map(s => s.replace(/^\d+[\.\)]\s*/, '').trim())
+                    .filter(s => s.length > 5 && s.length < 150)
+                    .slice(0, 3);
+            }
+            // Try splitting by double newlines
+            else if (cleanText.split(/\n\n/).length >= 2) {
+                suggestions = cleanText
+                    .split(/\n\n+/)
+                    .map(s => s.trim())
+                    .filter(s => s.length > 5 && s.length < 150)
+                    .slice(0, 3);
+            }
+            // Single suggestion or fallback
+            else if (cleanText.length > 5 && cleanText.length < 150) {
+                suggestions = [cleanText];
+            }
+            
+            // Ensure we have at least some suggestions
+            if (suggestions.length === 0) {
+                suggestions = ["Thanks for sharing!", "Tell me more about that.", "Interesting point!"];
+            }
+            
+            return suggestions;
+        };
+
+        // Create the chain with output parser
+        const chain = RunnableSequence.from([
+            promptTemplate,
+            model,
+            new StringOutputParser(),
+        ]);
+
+        // Invoke the chain with context
         const result = await chain.invoke({
-            context: context.substring(0, 2000), // Limit context to avoid token issues
-            userName,
-            tone
+            context: context.substring(0, 2500), // Increased context window
+            userName: userName || "the user",
+            tone: tone || "Friendly"
         });
 
-        const responseText = result.content.toString().trim();
-        console.log("AI Response:", responseText);
+        console.log("AI Raw Response:", result);
 
-        if (!responseText) {
-            console.log("Empty response from AI model");
-            return NextResponse.json({ suggestions: [] });
-        }
-
-        // Try to parse suggestions - handle various formats
-        let suggestions: string[] = [];
-
-        // First try splitting by |
-        if (responseText.includes("|")) {
-            suggestions = responseText
-                .split("|")
-                .map(s => s.trim())
-                .filter(s => s.length > 0 && s.length < 100)
-                .slice(0, 3);
-        }
-        // If no | found, try splitting by newlines
-        else if (responseText.includes("\n")) {
-            suggestions = responseText
-                .split("\n")
-                .map(s => s.replace(/^\d+\.\s*/, "").trim()) // Remove numbering like "1. "
-                .filter(s => s.length > 0 && s.length < 100)
-                .slice(0, 3);
-        }
-        // Otherwise treat as a single suggestion
-        else if (responseText.length > 0 && responseText.length < 100) {
-            suggestions = [responseText];
-        }
-
+        // Parse the suggestions
+        const suggestions = parseOutput(result);
+        
         console.log("Parsed suggestions:", suggestions);
+
         return NextResponse.json(
             { suggestions },
             {
@@ -86,8 +149,15 @@ IMPORTANT: Only output the suggestions separated by |. Nothing else.`
         );
     } catch (error) {
         console.error("AI Suggestion Error:", error);
+        // Return fallback suggestions on error
         return NextResponse.json(
-            { suggestions: [] },
+            { 
+                suggestions: [
+                    "Thanks for letting me know!",
+                    "I appreciate you sharing that.",
+                    "That's interesting, tell me more!"
+                ] 
+            },
             { status: 200 }
         );
     }

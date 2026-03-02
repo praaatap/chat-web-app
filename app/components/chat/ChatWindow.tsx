@@ -214,23 +214,15 @@ export function ChatWindow({
         setIsAiLoading(true);
         setIsAiModalOpen(true);
         try {
-            let context = messages.slice(-5).map(m => {
-                const sender = m.sender?.name || "User";
-                const body = m.body || "";
-                return `${sender}: ${body}`;
-            }).join("\n");
-
-            if (replyTo) {
-                context = `REPLYING TO [${replyTo.user}: ${replyTo.body}]\n\nRecent History:\n${context}`;
-            }
-
-            const res = await fetch("/api/ai/suggest", {
+            const res = await fetch("/api/ai/advanced", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    context,
-                    userName: "the user",
+                    conversationId: selectedConversation?._id,
+                    messages,
+                    userName,
                     tone: tone || "Friendly",
+                    action: "suggest",
                 })
             });
 
@@ -241,13 +233,59 @@ export function ChatWindow({
             }
 
             const data = await res.json();
-            if (Array.isArray(data.suggestions)) {
-                setAiSuggestions(data.suggestions);
+            if (typeof data.result === "string" && data.result.trim()) {
+                const suggestions = data.result
+                    .split("|")
+                    .map((entry: string) => entry.trim())
+                    .filter((entry: string) => entry.length > 0)
+                    .slice(0, 3);
+                setAiSuggestions(suggestions.length > 0 ? suggestions : []);
             } else {
                 setAiSuggestions([]);
             }
         } catch (err) {
             console.error("AI fetch failed:", err);
+            setAiSuggestions([]);
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
+
+    const handleAdvancedAiAction = async (action: "summarize" | "analyze") => {
+        if (messages.length === 0) {
+            setAiSuggestions([]);
+            setIsAiModalOpen(true);
+            return;
+        }
+
+        setIsAiLoading(true);
+        setIsAiModalOpen(true);
+        try {
+            const res = await fetch("/api/ai/advanced", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    conversationId: selectedConversation?._id,
+                    messages,
+                    userName,
+                    tone: tone || "Friendly",
+                    action,
+                }),
+            });
+
+            if (!res.ok) {
+                setAiSuggestions([]);
+                return;
+            }
+
+            const data = await res.json();
+            if (typeof data.result === "string" && data.result.trim()) {
+                setAiSuggestions([data.result.trim()]);
+            } else {
+                setAiSuggestions([]);
+            }
+        } catch (err) {
+            console.error("Advanced AI fetch failed:", err);
             setAiSuggestions([]);
         } finally {
             setIsAiLoading(false);
@@ -606,8 +644,23 @@ export function ChatWindow({
                     <button
                         onClick={handleGetAiSuggestions}
                         className="p-1.5 text-indigo-400 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-all cursor-pointer group"
+                        title="AI smart replies"
                     >
                         <span className="text-lg group-hover:scale-110 transition-transform">✨</span>
+                    </button>
+                    <button
+                        onClick={() => handleAdvancedAiAction("summarize")}
+                        className="px-2 py-1 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-300 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors"
+                        title="Summarize this conversation"
+                    >
+                        Sum
+                    </button>
+                    <button
+                        onClick={() => handleAdvancedAiAction("analyze")}
+                        className="px-2 py-1 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-300 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors"
+                        title="Analyze this conversation"
+                    >
+                        Analyze
                     </button>
                     <select
                         className="bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded-lg px-2 py-1 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 outline-none focus:border-indigo-500 dark:focus:border-indigo-500 transition-colors cursor-pointer"

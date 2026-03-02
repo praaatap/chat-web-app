@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 type ChatItem = {
   name: string;
   message: string;
@@ -62,8 +66,22 @@ export function ChatSidebar({
   onRejectChatInvite,
   onOpenSettings,
 }: ChatSidebarProps) {
+  const [activeTab, setActiveTab] = useState<'all' | 'dms' | 'groups'>('all');
+
+  // Filter chats based on active tab
+  const filteredChats = chats.filter(chat => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'dms') return !chat.isGroup;
+    if (activeTab === 'groups') return chat.isGroup;
+    return true;
+  });
+
+  const dmCount = chats.filter(c => !c.isGroup).length;
+  const groupCount = chats.filter(c => c.isGroup).length;
+
   return (
     <aside className="flex h-full w-full flex-col bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800/50">
+
       <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800/50 px-5 py-4 bg-zinc-50/50 dark:bg-zinc-900/50">
         <div className="flex items-center gap-3">
           {imageUrl ? (
@@ -117,6 +135,41 @@ export function ChatSidebar({
         />
       </div>
 
+      {/* Filter Tabs */}
+      {!searchValue.trim() && (
+        <div className="px-4 pb-3">
+          <div className="flex items-center gap-2 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-full ">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`cursor-pointer flex-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'all'
+                ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                }`}
+            >
+              All {chats.length > 0 && `(${chats.length})`}
+            </button>
+            <button
+              onClick={() => setActiveTab('dms')}
+              className={`cursor-pointer flex-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'dms'
+                ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                }`}
+            >
+              DMs {dmCount > 0 && `(${dmCount})`}
+            </button>
+            <button
+              onClick={() => setActiveTab('groups')}
+              className={`cursor-pointer flex-1 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'groups'
+                ? 'bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                }`}
+            >
+              Groups {groupCount > 0 && `(${groupCount})`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {searchHistory.length > 0 ? (
         <div className="px-4 pb-3">
           <p className="pb-2 text-[11px] font-semibold tracking-[0.18em] text-zinc-400 dark:text-zinc-500">
@@ -146,14 +199,17 @@ export function ChatSidebar({
         role="list"
         aria-labelledby="conversations-heading"
       >
-        {chats.length === 0 ? (
+        {filteredChats.length === 0 ? (
           <div className="flex flex-col">
             <p className="px-2 py-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
-              {searchValue.trim() !== "" ? "No people found" : "No conversations yet"}
+              {searchValue.trim() !== "" ? "No people found" :
+                activeTab === 'dms' ? "No direct messages yet" :
+                  activeTab === 'groups' ? "No groups yet" :
+                    "No conversations yet"}
             </p>
           </div>
         ) : (
-          chats.map((chat) => (
+          filteredChats.map((chat) => (
             <button
               key={chat.conversationId}
               onClick={() => chat.conversationId && onChatSelect(chat.conversationId)}
@@ -199,66 +255,6 @@ export function ChatSidebar({
               </div>
             </button>
           ))
-        )}
-
-        {/* Suggested Users */}
-        {suggestedUsers && suggestedUsers.length > 0 && !searchValue.trim() && (
-          <div className="mt-8 border-t border-zinc-100 pt-6 px-2">
-            <p className="pb-4 text-[11px] font-black tracking-widest text-zinc-400 uppercase">
-              Suggested for you
-            </p>
-            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2 snap-x">
-              {suggestedUsers.map((user) => (
-                <div
-                  key={user._id}
-                  className="flex flex-col items-center gap-2 shrink-0 w-24 p-4 rounded-3xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all snap-start hover:shadow-lg dark:hover:shadow-indigo-900/10"
-                >
-                  <div className="relative">
-                    {user.imageUrl ? (
-                      <img src={user.imageUrl} alt={user.name || "User"} className="h-12 w-12 rounded-full bg-zinc-200 object-cover border-2 border-white shadow-sm" />
-                    ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
-                        {(user.name || "User")[0].toUpperCase()}
-                      </div>
-                    )}
-                    {user.lastSeenAt && (Date.now() - user.lastSeenAt < 60000) && (
-                      <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
-                    )}
-                  </div>
-                  <div className="text-center min-w-0 w-full px-1">
-                    <p className="text-[11px] font-bold text-zinc-900 truncate w-full">{user.name || "User"}</p>
-                    <p className="text-[9px] text-zinc-400 font-medium truncate uppercase tracking-tighter">
-                      {user.isInConversation ? "In chat" : "New user"}
-                    </p>
-                  </div>
-                  {user.isInConversation ? (
-                    <div className="mt-1 px-2 py-1 rounded-full bg-zinc-200 flex items-center gap-1">
-                      <svg className="w-3 h-3 text-zinc-600" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                      </svg>
-                    </div>
-                  ) : user.hasPendingInvite ? (
-                    <div className="mt-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 flex items-center gap-1">
-                      <svg className="w-2.5 h-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-[8px] font-bold text-emerald-700 uppercase tracking-wider">Sent</span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => onSendChatInvite?.(user._id)}
-                      className="mt-1 h-6 w-6 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-colors cursor-pointer active:scale-95"
-                      title="Send chat request"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
         )}
 
         {/* Incoming Chat Requests */}
@@ -325,5 +321,7 @@ export function ChatSidebar({
         )}
       </div>
     </aside>
+
+
   );
 }
