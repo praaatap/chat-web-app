@@ -131,6 +131,7 @@ function ChatContent() {
   const sendChatInvite = useMutation((api as any).messages.sendChatInvite);
   const acceptChatInvite = useMutation((api as any).messages.acceptChatInvite);
   const rejectChatInvite = useMutation((api as any).messages.rejectChatInvite);
+  const generateUploadUrl = useMutation((api as any).files.generateUploadUrl);
 
   useEffect(() => {
     initializeUser();
@@ -201,12 +202,39 @@ function ChatContent() {
     clearSearch();
   };
 
-  const handleSendMessage = async (body: string, replyTo?: string, replyToUser?: string) => {
-    if (!selectedConversationId || !body.trim() || isSending) return;
+  const handleSendMessage = async (
+    body: string, 
+    replyTo?: string, 
+    replyToUser?: string,
+    file?: File,
+    mediaType?: 'image' | 'video'
+  ) => {
+    if (!selectedConversationId || (!body.trim() && !file) || isSending) return;
     setIsSending(true);
     setError(null);
     try {
-      await sendMessage({ conversationId: selectedConversationId as any, body, replyTo, replyToUser });
+      let mediaStorageId = undefined;
+      
+      // Upload file if provided
+      if (file) {
+        const uploadUrl = await generateUploadUrl();
+        const uploadResult = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        });
+        const { storageId } = await uploadResult.json();
+        mediaStorageId = storageId;
+      }
+      
+      await sendMessage({ 
+        conversationId: selectedConversationId as any, 
+        body: body || '',
+        replyTo, 
+        replyToUser,
+        mediaStorageId,
+        mediaType
+      });
     } catch (err) {
       setError("Failed to send message.");
     } finally {

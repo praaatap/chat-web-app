@@ -7,11 +7,12 @@ import { api } from "../../../convex/_generated/api";
 import { AISuggestionsModal } from "./AISuggestionsModal";
 import { formatMessageTimestamp } from "../../lib/utils";
 import { useToneStore } from '@/app/store/useTone';
+import { useChatStore } from '@/app/store/useChatStore';
 
 
 interface ChatWindowProps {
     messages: any[];
-    onSendMessage: (message: string, replyTo?: string, replyToUser?: string) => void;
+    onSendMessage: (message: string, replyTo?: string, replyToUser?: string, file?: File, mediaType?: 'image' | 'video') => void;
     onBack: () => void;
     selectedConversation?: any;
     currentUserId?: string;
@@ -46,9 +47,13 @@ export function ChatWindow({
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
     const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
     const [isAiLoading, setIsAiLoading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const tone = useToneStore(state => state.tone);
     const setTone = useToneStore(state => state.setTone);
+    
+    // File upload state from ChatStore
+    const { selectedFile, setSelectedFile, filePreview, setFilePreview, clearFileSelection } = useChatStore();
 
     const setTyping = useMutation((api as any).messages.setTyping);
     const clearTyping = useMutation((api as any).messages.clearTyping);
@@ -60,20 +65,52 @@ export function ChatWindow({
         setTyping({ conversationId: selectedConversation._id });
     };
 
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        // Check if it's an image or video
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        
+        if (!isImage && !isVideo) {
+            alert('Please select an image or video file');
+            return;
+        }
+        
+        // Check file size (max 50MB)
+        if (file.size > 50 * 1024 * 1024) {
+            alert('File size must be less than 50MB');
+            return;
+        }
+        
+        setSelectedFile(file);
+        
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setFilePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
     const handleSend = async () => {
-        if (!input.trim() || isSending) return;
+        if ((!input.trim() && !selectedFile) || isSending) return;
         const currentInput = input;
         const currentReplyTo = replyTo;
+        const currentFile = selectedFile;
+        const mediaType = currentFile?.type.startsWith('image/') ? 'image' : 'video';
 
         setInput("");
         setReplyTo(null);
+        clearFileSelection();
 
         if (selectedConversation?._id) {
             clearTyping({ conversationId: selectedConversation._id });
         }
 
         try {
-            await onSendMessage(currentInput, currentReplyTo?.body, currentReplyTo?.user);
+            await onSendMessage(currentInput, currentReplyTo?.body, currentReplyTo?.user, currentFile || undefined, mediaType);
         } catch (err) {
             console.error("Failed to send:", err);
         }
@@ -285,6 +322,27 @@ export function ChatWindow({
                                                 </div>
                                             )}
 
+                                            {msg.mediaUrl && msg.mediaType === 'image' && (
+                                                <div className="mb-2 rounded-lg overflow-hidden">
+                                                    <img 
+                                                        src={msg.mediaUrl} 
+                                                        alt="Shared image" 
+                                                        className="max-w-full max-h-80 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                                        onClick={() => window.open(msg.mediaUrl, '_blank')}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {msg.mediaUrl && msg.mediaType === 'video' && (
+                                                <div className="mb-2 rounded-lg overflow-hidden">
+                                                    <video 
+                                                        src={msg.mediaUrl} 
+                                                        controls 
+                                                        className="max-w-full max-h-80 object-contain"
+                                                    />
+                                                </div>
+                                            )}
+
                                             <p className={`text-[14px] leading-relaxed whitespace-pre-wrap break-all ${msg.deleted ? 'italic text-opacity-70' : ''}`}>
                                                 {msg.body}
                                             </p>
@@ -326,7 +384,7 @@ export function ChatWindow({
                                             )}
                                         </div>
                                         {msg.reactions && msg.reactions.length > 0 && (
-                                            <div className={`flex gap-1 mt-[-6px] z-10 ${isMine ? 'mr-2' : 'ml-2'}`}>
+                                            <div className={`flex gap-1 -mt-1.5 z-10 ${isMine ? 'mr-2' : 'ml-2'}`}>
                                                 {msg.reactions.map(({ emoji, count }: { emoji: string, count: number }) => (
                                                     <button
                                                         key={emoji}
@@ -384,8 +442,54 @@ export function ChatWindow({
                 </div>
             )}
 
+            {filePreview && selectedFile && (
+                <div className="px-4 py-2 bg-zinc-50 dark:bg-zinc-800 border-t border-zinc-200 dark:border-zinc-700">
+                    <div className="flex items-center gap-3 p-2 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                        <div className="relative">
+                            {selectedFile.type.startsWith('image/') ? (
+                                <img src={filePreview} alt="Preview" className="w-16 h-16 object-cover rounded" />
+                            ) : (
+                                <div className="w-16 h-16 bg-zinc-200 dark:bg-zinc-700 rounded flex items-center justify-center">
+                                    <span className="text-2xl">🎥</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{selectedFile.name}</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                        </div>
+                        <button
+                            onClick={clearFileSelection}
+                            className="p-2 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="border-t border-zinc-200 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 px-4 py-3 shrink-0">
                 <div className="flex items-center gap-2 rounded-2xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-3 py-2">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,video/*"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                    />
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-1.5 text-zinc-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-all"
+                        title="Attach image or video"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                    </button>
                     <button
                         onClick={handleGetAiSuggestions}
                         className="p-1.5 text-indigo-400 dark:text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-all cursor-pointer group"
@@ -420,7 +524,7 @@ export function ChatWindow({
                     />
                     <button
                         onClick={handleSend}
-                        disabled={!input.trim() || isSending}
+                        disabled={(!input.trim() && !selectedFile) || isSending}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm disabled:opacity-50 disabled:bg-zinc-300 transition-colors"
                     >
                         {isSending ? (

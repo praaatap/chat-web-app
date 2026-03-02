@@ -43,6 +43,9 @@ export default defineSchema({
     reactions: v.optional(v.record(v.string(), v.string())),
     replyTo: v.optional(v.string()),
     replyToUser: v.optional(v.string()),
+    mediaUrl: v.optional(v.string()),
+    mediaType: v.optional(v.union(v.literal("image"), v.literal("video"))),
+    mediaStorageId: v.optional(v.id("_storage")),
   })
     .index("by_conversation", ["conversationId"])
     .index("by_conversation_createdAt", ["conversationId", "createdAt"]),

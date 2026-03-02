@@ -321,30 +321,44 @@ export const sendMessage = mutation({
     body: v.string(),
     replyTo: v.optional(v.string()),
     replyToUser: v.optional(v.string()),
+    mediaStorageId: v.optional(v.id("_storage")),
+    mediaType: v.optional(v.union(v.literal("image"), v.literal("video"))),
   },
   handler: async (ctx, args) => {
     const currentUser = await initializeOrUpdateUser(ctx);
     const normalized = args.body.trim();
 
-    if (!normalized) {
+    // Allow empty body if there's media
+    if (!normalized && !args.mediaStorageId) {
       return null;
     }
 
     const now = Date.now();
+    
+    // Get media URL if storage ID is provided
+    let mediaUrl = undefined;
+    if (args.mediaStorageId) {
+      const url = await ctx.storage.getUrl(args.mediaStorageId);
+      mediaUrl = url || undefined;
+    }
 
     // Insert message
     const messageId = await ctx.db.insert("messages", {
       conversationId: args.conversationId,
       senderId: currentUser._id,
-      body: normalized,
+      body: normalized || (args.mediaType ? `Sent ${args.mediaType}` : ''),
       createdAt: now,
       replyTo: args.replyTo,
       replyToUser: args.replyToUser,
+      mediaUrl,
+      mediaType: args.mediaType,
+      mediaStorageId: args.mediaStorageId,
     });
 
     // Update conversation's last message
+    const lastMessageText = normalized || (args.mediaType === 'image' ? '📷 Photo' : '🎥 Video');
     await ctx.db.patch(args.conversationId, {
-      lastMessage: normalized,
+      lastMessage: lastMessageText,
       lastMessageAt: now,
       lastMessageSenderId: currentUser._id,
       // Clear typing for this user when they send a message

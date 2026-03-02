@@ -15,6 +15,14 @@ interface ChatState {
     error: string | null;
     setError: (error: string | null) => void;
     
+    // File upload state
+    uploadingFile: boolean;
+    setUploadingFile: (uploading: boolean) => void;
+    selectedFile: File | null;
+    setSelectedFile: (file: File | null) => void;
+    filePreview: string | null;
+    setFilePreview: (preview: string | null) => void;
+    
     // Modal states
     isGroupModalOpen: boolean;
     setIsGroupModalOpen: (isOpen: boolean) => void;
@@ -37,6 +45,7 @@ interface ChatState {
     clearSearch: () => void;
     resetGroupCreation: () => void;
     handleResize: (width: number) => void;
+    clearFileSelection: () => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -45,6 +54,9 @@ export const useChatStore = create<ChatState>((set) => ({
     searchValue: '',
     isSending: false,
     error: null,
+    uploadingFile: false,
+    selectedFile: null,
+    filePreview: null,
     isGroupModalOpen: false,
     isAddMembersOpen: false,
     groupName: '',
@@ -57,6 +69,9 @@ export const useChatStore = create<ChatState>((set) => ({
     setSearchValue: (value) => set({ searchValue: value }),
     setIsSending: (sending) => set({ isSending: sending }),
     setError: (error) => set({ error }),
+    setUploadingFile: (uploading) => set({ uploadingFile: uploading }),
+    setSelectedFile: (file) => set({ selectedFile: file }),
+    setFilePreview: (preview) => set({ filePreview: preview }),
     setIsGroupModalOpen: (isOpen) => set({ isGroupModalOpen: isOpen }),
     setIsAddMembersOpen: (isOpen) => set({ isAddMembersOpen: isOpen }),
     setGroupName: (name) => set({ groupName: name }),
@@ -74,5 +89,9 @@ export const useChatStore = create<ChatState>((set) => ({
     handleResize: (width: number) => set({ 
         isLargeScreen: width >= 1024,
         isExtraLargeScreen: width >= 1280
+    }),
+    clearFileSelection: () => set({ 
+        selectedFile: null, 
+        filePreview: null 
     }),
 }));
