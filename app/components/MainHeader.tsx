@@ -19,13 +19,16 @@ export function MainHeader() {
             <div className="flex items-center gap-6 justify-self-start min-w-0">
                 <Link href="/" className="flex items-center gap-2 text-lg font-bold text-indigo-600">
                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white text-sm">
-                        ðŸ’¬
+                        PC
                     </span>
                     Pulse Connect
                 </Link>
             </div>
 
             <nav className="hidden sm:flex items-center justify-center gap-6 justify-self-center">
+                <Link href="/workspace" className="text-sm font-semibold text-zinc-600 hover:text-indigo-600 transition-colors">
+                    Workspace
+                </Link>
                 <Link href="/chat" className="text-sm font-semibold text-zinc-600 hover:text-indigo-600 transition-colors">
                     Chat
                 </Link>
