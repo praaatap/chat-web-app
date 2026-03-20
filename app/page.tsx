@@ -5,7 +5,6 @@ import { SignInButton, UserButton, useClerk } from "@clerk/nextjs";
 import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { MainHeader } from "./components/MainHeader";
 import { AuthForm } from "./components/auth/AuthForm";
 
 export default function Home() {
@@ -83,18 +82,18 @@ export default function Home() {
                   </div>
                   <div className="space-y-1">
                     <h2 className="text-3xl font-black text-zinc-900 tracking-tight leading-none uppercase">Welcome back!</h2>
-                    <p className="text-zinc-500 font-medium text-sm">Manage your account or jump into chat.</p>
+                    <p className="text-zinc-500 font-medium text-sm">Manage your account or open your board workspace.</p>
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   <Link
-                    href="/chat"
+                    href="/workspace/trello"
                     className="group relative flex w-full items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-6 py-5 text-lg font-black text-white shadow-xl shadow-indigo-100 transition-all hover:bg-indigo-700 hover:shadow-indigo-200 active:scale-[0.98] overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-size-[250%_250%] animate-[shimmer_3s_infinite]" />
                     <span className="relative z-10 flex items-center gap-3">
-                      Open Messenger
+                      Open Board Workspace
                       <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
